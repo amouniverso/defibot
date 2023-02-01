@@ -2,9 +2,8 @@
 const ccxt = require ('ccxt');
 
 (async function () {
-    // let kraken    = new ccxt.kraken ()
+    console.log(ccxt.exchanges.length, ccxt.exchanges)
     // let bitfinex  = new ccxt.bitfinex ({ verbose: true })
-    // let huobipro  = new ccxt.huobipro ()
     let binance = new ccxt.binance ({
         // apiKey: 'YOUR_PUBLIC_API_KEY',
         // secret: 'YOUR_SECRET_PRIVATE_KEY',
@@ -12,8 +11,18 @@ const ccxt = require ('ccxt');
 
     console.log(binance.id)
     await binance.loadMarkets()
-    console.log(binance.currencies)
-    console.log(binance.markets['AAVE/USDT'])
+    // console.log(binance)
+    // console.log(binance.symbols)
+    // console.log(binance.markets['AAVE/USDT'])
+    let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
+    while (true) {
+        const trades = await binance.fetchTrades ('BTC/USDT', undefined, 1)
+        // console.log(trades)
+        const {price, symbol} = trades[trades.length - 1]
+        console.log(symbol, price)
+        await sleep (binance.rateLimit) // milliseconds
+    }
+
 
     // console.log (kraken.id,    await kraken.loadMarkets ())
     // console.log (bitfinex.id,  await bitfinex.loadMarkets  ())
