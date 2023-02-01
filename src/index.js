@@ -2,37 +2,33 @@
 const ccxt = require ('ccxt');
 
 (async function () {
-    console.log(ccxt.exchanges.length, ccxt.exchanges)
-    // let bitfinex  = new ccxt.bitfinex ({ verbose: true })
-    let binance = new ccxt.binance ({
-        // apiKey: 'YOUR_PUBLIC_API_KEY',
-        // secret: 'YOUR_SECRET_PRIVATE_KEY',
-    })
-
-    console.log(binance.id)
-    await binance.loadMarkets()
+    // console.log(ccxt.exchanges.length, ccxt.exchanges)
+    const exchanges = [
+        new ccxt.kucoin(),
+        new ccxt.binance ({
+            // apiKey: 'YOUR_PUBLIC_API_KEY',
+            // secret: 'YOUR_SECRET_PRIVATE_KEY',
+        })
+    ]
+    console.log('loading markets...')
+    await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
+    console.log('markets loaded.')
     // console.log(binance)
     // console.log(binance.symbols)
-    // console.log(binance.markets['AAVE/USDT'])
+    // console.log(exchanges[1].markets['AAVE/USDT'])
     let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
     while (true) {
-        const trades = await binance.fetchTrades ('BTC/USDT', undefined, 1)
-        // console.log(trades)
-        const {price, symbol} = trades[trades.length - 1]
-        console.log(symbol, price)
-        await sleep (binance.rateLimit) // milliseconds
+        const trades = await Promise.all(
+            exchanges.map(exchange => exchange.fetchTrades ('BTC/USDT', undefined, 1)
+        ))
+        trades.forEach((trade, index) => {
+            const {price, symbol} = trade[trade.length - 1]
+            console.log(exchanges[index].id, symbol, price)
+            // process.stdout.write(`${exchanges[index].id}, ${symbol}, ${price}; `);
+        })
+        // process.stdout.write('\n')
+        await sleep (1000) // milliseconds
     }
-
-
-    // console.log (kraken.id,    await kraken.loadMarkets ())
-    // console.log (bitfinex.id,  await bitfinex.loadMarkets  ())
-    // console.log (huobipro.id,  await huobipro.loadMarkets ())
-    //
-    // console.log (kraken.id,    await kraken.fetchOrderBook (kraken.symbols[0]))
-    // console.log (bitfinex.id,  await bitfinex.fetchTicker ('BTC/USD'))
-    // console.log (huobipro.id,  await huobipro.fetchTrades ('ETH/USDT'))
-    //
-    // console.log (okcoinusd.id, await okcoinusd.fetchBalance ())
     //
     // // sell 1 BTC/USD for market price, sell a bitcoin for dollars immediately
     // console.log (okcoinusd.id, await okcoinusd.createMarketSellOrder ('BTC/USD', 1))
