@@ -3,6 +3,8 @@ const ccxt = require ('ccxt');
 
 (async function () {
     // console.log(ccxt.exchanges.length, ccxt.exchanges)
+    console.log('============= DeFi combat bot ============')
+    console.log('============= initializing... ============\n')
     const exchanges = [
         new ccxt.kucoin(),
         new ccxt.binance ({
@@ -12,7 +14,7 @@ const ccxt = require ('ccxt');
     ]
     console.log('loading markets...')
     await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
-    console.log('markets loaded.')
+    console.log('markets loaded.\n')
     // console.log(binance)
     // console.log(binance.symbols)
     // console.log(exchanges[1].markets['AAVE/USDT'])
@@ -26,6 +28,11 @@ const ccxt = require ('ccxt');
             console.log(exchanges[index].id, symbol, price)
             // process.stdout.write(`${exchanges[index].id}, ${symbol}, ${price}; `);
         })
+        const prices = trades.map((trade, index) => {
+            const {price, symbol} = trade[trade.length - 1]
+            return {id : exchanges[index].id, price, symbol}
+        })
+        console.log(`${prices[0].id}/${prices[1].id}, ${((1 - (prices[0].price/prices[1].price)) * 100).toFixed(4)}%`)
         // process.stdout.write('\n')
         await sleep (1000) // milliseconds
     }
