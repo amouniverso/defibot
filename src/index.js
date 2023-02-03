@@ -34,10 +34,15 @@ const {lbank} = require("ccxt");
     // ]
     const brokenExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
         'huobijp', 'coinone', 'kuna', 'mercado', 'luno', 'therock', 'tidex', 'ripio', 'yobit', 'zipmex', 'okex',
-        'okx', 'okex5', 'binanceus', 'coinbase']
+        'okx', 'okex5', 'binanceus', 'coinbase', 'kraken', 'bitfinex2', 'timex']
+    const limitedMarketsSupport = ['bl3p', 'bitstamp1', 'blockchaincom', 'binancecoinm', 'bit2c', 'bitbank',
+        'bitmex', 'bitvavo', 'btcbox', 'btctradeua', 'coincheck', 'coinspot', 'deribit', 'flowbtc', 'idex',
+        'independentreserve', 'itbit', 'kucoinfutures', 'okcoin', 'paymium', 'poloniexfutures', 'zaif',
+        'delta', 'bitbns']
     const exchanges = ccxt.exchanges.map(ex => {
-        return !brokenExchanges.includes(ex) ? new ccxt[ex]() : null
+        return (!limitedMarketsSupport.includes(ex) && !brokenExchanges.includes(ex)) ? new ccxt[ex]() : null
     }).filter(el => el)
+    console.log('num of valid exchanges: ', exchanges.length)
     console.log('loading markets...')
     await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
     console.log('markets loaded.\n')
@@ -50,14 +55,15 @@ const {lbank} = require("ccxt");
             exchanges.map(exchange => exchange.fetchTrades ('BTC/USDT', undefined, 1)
         ))
         trades.forEach((trade, index) => {
-            const {price, symbol} = trade[trade.length - 1]
+            const lastTrade = trade[trade.length - 1]
+            const {price, symbol} = lastTrade ? lastTrade : {}
             console.log(exchanges[index].id, symbol, price)
             // process.stdout.write(`${exchanges[index].id}, ${symbol}, ${price}; `);
         })
-        const prices = trades.map((trade, index) => {
-            const {price, symbol} = trade[trade.length - 1]
-            return {id : exchanges[index].id, price, symbol}
-        })
+        // const prices = trades.map((trade, index) => {
+        //     const {price, symbol} = trade[trade.length - 1]
+        //     return {id : exchanges[index].id, price, symbol}
+        // })
         // console.log(`${prices[0].id}/${prices[1].id}, ${((1 - (prices[0].price/prices[1].price)) * 100).toFixed(4)}%`)
         process.stdout.write('\n')
         await sleep (500) // milliseconds
