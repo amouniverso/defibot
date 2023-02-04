@@ -1,24 +1,21 @@
 'use strict';
 const ccxt = require ('ccxt');
 
-const sliceIntoChunks = (arr, chunkSize) => {
-    const res = [];
-    for (let i = 0; i < arr.length; i += chunkSize) {
-        const chunk = arr.slice(i, i + chunkSize);
-        res.push(chunk);
+const createTable = (exchanges, prices, colCount) => {
+    const result = []
+    for (let i = 0; i < exchanges.length; i += colCount) {
+        result.push(
+            exchanges.reduce((accumRow, currRow, indexRow, arrayRow) => {
+                return ({...accumRow, [currRow.id]: arrayRow.slice(i, i + colCount).reduce((accumCol, currCol) => {
+                        let priceRatio = prices[currRow.id].price / prices[currCol.id].price
+                        priceRatio = priceRatio <= 1 ? 1 - priceRatio : -(1 - 1/priceRatio)
+                        const priceDiff = currRow.id !== currCol.id ? `${(priceRatio * 100).toFixed(4)}%` : ''
+                        return {...accumCol, [currCol.id]: priceDiff}
+                    }, {})})
+            }, {})
+        )
     }
-    return res;
-}
-
-const createTable = (exchanges, prices) => {
-    return exchanges.reduce((accumRow, currRow, indexRow, arrayRow) => {
-        return ({...accumRow, [currRow.id]: arrayRow.reduce((accumCol, currCol) => {
-                let priceRatio = prices[currRow.id].price / prices[currCol.id].price
-                priceRatio = priceRatio <= 1 ? 1 - priceRatio : -(1 - 1/priceRatio)
-                const priceDiff = currRow.id !== currCol.id ? `${(priceRatio * 100).toFixed(4)}%` : ''
-                return {...accumCol, [currCol.id]: priceDiff}
-            }, {})})
-    }, {})
+    return result
 }
 
 (async function () {
@@ -48,8 +45,8 @@ const createTable = (exchanges, prices) => {
             prices[exchanges[index].id] = {price, symbol}
         })
         console.log(pair + ':')
-        sliceIntoChunks(exchanges, 9).forEach(el => {
-            console.table(createTable(el, prices))
+        createTable(exchanges, prices, 9).forEach(page => {
+            console.table(page)
         })
         process.stdout.write('\n')
         await sleep (10000) // milliseconds
