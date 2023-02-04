@@ -1,9 +1,27 @@
 'use strict';
 const ccxt = require ('ccxt');
-const {lbank} = require("ccxt");
+
+const sliceIntoChunks = (arr, chunkSize) => {
+    const res = [];
+    for (let i = 0; i < arr.length; i += chunkSize) {
+        const chunk = arr.slice(i, i + chunkSize);
+        res.push(chunk);
+    }
+    return res;
+}
+
+const createTable = (exchanges, prices) => {
+    return exchanges.reduce((accumRow, currRow, indexRow, arrayRow) => {
+        return ({...accumRow, [currRow.id]: arrayRow.reduce((accumCol, currCol) => {
+                let priceRatio = prices[currRow.id].price / prices[currCol.id].price
+                priceRatio = priceRatio <= 1 ? 1 - priceRatio : -(1 - 1/priceRatio)
+                const priceDiff = currRow.id !== currCol.id ? `${(priceRatio * 100).toFixed(4)}%` : ''
+                return {...accumCol, [currCol.id]: priceDiff}
+            }, {})})
+    }, {})
+}
 
 (async function () {
-    // console.log(ccxt.exchanges.length, ccxt.exchanges)
     console.log('============= DeFi combat bot ============')
     console.log('============= Initializing... ============\n')
 
@@ -29,16 +47,10 @@ const {lbank} = require("ccxt");
             const {price, symbol} = trade[trade.length - 1]
             prices[exchanges[index].id] = {price, symbol}
         })
-        const exchangesTable = exchanges.slice(0,9).reduce((accumRow, currRow, indexRow, arrayRow) => {
-            return ({...accumRow, [currRow.id]: arrayRow.reduce((accumCol, currCol) => {
-                    let priceRatio = prices[currRow.id].price / prices[currCol.id].price
-                    priceRatio = priceRatio <= 1 ? 1 - priceRatio : -(1 - 1/priceRatio)
-                    const priceDiff = currRow.id !== currCol.id ? `${(priceRatio * 100).toFixed(4)}%` : ''
-                    return {...accumCol, [currCol.id]: priceDiff}
-            }, {})})
-        }, {})
         console.log(pair + ':')
-        console.table(exchangesTable)
+        sliceIntoChunks(exchanges, 9).forEach(el => {
+            console.table(createTable(el, prices))
+        })
         process.stdout.write('\n')
         await sleep (10000) // milliseconds
     }
