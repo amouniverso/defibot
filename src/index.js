@@ -5,68 +5,42 @@ const {lbank} = require("ccxt");
 (async function () {
     // console.log(ccxt.exchanges.length, ccxt.exchanges)
     console.log('============= DeFi combat bot ============')
-    console.log('============= initializing... ============\n')
-    // const exchanges = [
-    //     new ccxt.binance ({
-    //         // apiKey: 'YOUR_PUBLIC_API_KEY',
-    //         // secret: 'YOUR_SECRET_PRIVATE_KEY',
-    //     }),
-    //     new ccxt.kucoin(),
-    //     new ccxt.bitfinex(),
-    //     // new ccxt.bitstamp(),
-    //     // new ccxt.okx(),
-    //     // new ccxt.bithumb(),
-    //     new ccxt.bybit(),
-    //     new ccxt.bitget(),
-    //     // new ccxt.bitmex(),
-    //     new ccxt.huobi(),
-    //     new ccxt.gateio(),
-    //     new ccxt.gemini(),
-    //     new ccxt.cryptocom(),
-    //     // new ccxt.bitflyer(),
-    //     new ccxt.mexc(),
-    //     new ccxt.bkex,
-    //     new ccxt.lbank(),
-    //     // new ccxt.coincheck(),
-    //     new ccxt.upbit(),
-    //
-    //
-    // ]
-    const brokenExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
+    console.log('============= Initializing... ============\n')
+
+    const unavailableExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
         'huobijp', 'coinone', 'kuna', 'mercado', 'luno', 'therock', 'tidex', 'ripio', 'yobit', 'zipmex', 'okex',
-        'okx', 'okex5', 'binanceus', 'coinbase', 'kraken', 'bitfinex2', 'timex']
-    const limitedMarketsSupport = ['bl3p', 'bitstamp1', 'blockchaincom', 'binancecoinm', 'bit2c', 'bitbank',
-        'bitmex', 'bitvavo', 'btcbox', 'btctradeua', 'coincheck', 'coinspot', 'deribit', 'flowbtc', 'idex',
-        'independentreserve', 'itbit', 'kucoinfutures', 'okcoin', 'paymium', 'poloniexfutures', 'zaif',
-        'delta', 'bitbns']
-    const exchanges = ccxt.exchanges.map(ex => {
-        return (!limitedMarketsSupport.includes(ex) && !brokenExchanges.includes(ex)) ? new ccxt[ex]() : null
+        'okx', 'okex5', 'binanceus', 'kraken', 'bitfinex2', 'timex', 'blockchaincom', 'coinbase', 'alpaca']
+    const pair = 'ETH/USDT'
+    let exchanges = ccxt.exchanges.map(ex => {
+        return !unavailableExchanges.includes(ex) ? new ccxt[ex]() : null
     }).filter(el => el)
-    console.log('num of valid exchanges: ', exchanges.length)
-    console.log('loading markets...')
+    console.log('Loading markets...')
     await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
-    console.log('markets loaded.\n')
-    // console.log(binance)
-    // console.log(binance.symbols)
-    // console.log(exchanges[1].markets['AAVE/USDT'])
+    exchanges = exchanges.filter(el => el.symbols.includes(pair))
+    console.log('Markets loaded. Num of valid exchanges: ', exchanges.length, '\n')
+
     let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
     while (true) {
         const trades = await Promise.all(
-            exchanges.map(exchange => exchange.fetchTrades ('BTC/USDT', undefined, 1)
+            exchanges.map(exchange => exchange.fetchTrades (pair, undefined, 1)
         ))
+        const prices = {}
         trades.forEach((trade, index) => {
-            const lastTrade = trade[trade.length - 1]
-            const {price, symbol} = lastTrade ? lastTrade : {}
-            console.log(exchanges[index].id, symbol, price)
-            // process.stdout.write(`${exchanges[index].id}, ${symbol}, ${price}; `);
+            const {price, symbol} = trade[trade.length - 1]
+            prices[exchanges[index].id] = {price, symbol}
         })
-        // const prices = trades.map((trade, index) => {
-        //     const {price, symbol} = trade[trade.length - 1]
-        //     return {id : exchanges[index].id, price, symbol}
-        // })
-        // console.log(`${prices[0].id}/${prices[1].id}, ${((1 - (prices[0].price/prices[1].price)) * 100).toFixed(4)}%`)
+        const exchangesTable = exchanges.slice(0,9).reduce((accumRow, currRow, indexRow, arrayRow) => {
+            return ({...accumRow, [currRow.id]: arrayRow.reduce((accumCol, currCol) => {
+                    let priceRatio = prices[currRow.id].price / prices[currCol.id].price
+                    priceRatio = priceRatio <= 1 ? 1 - priceRatio : -(1 - 1/priceRatio)
+                    const priceDiff = currRow.id !== currCol.id ? `${(priceRatio * 100).toFixed(4)}%` : ''
+                    return {...accumCol, [currCol.id]: priceDiff}
+            }, {})})
+        }, {})
+        console.log(pair + ':')
+        console.table(exchangesTable)
         process.stdout.write('\n')
-        await sleep (500) // milliseconds
+        await sleep (10000) // milliseconds
     }
     //
     // // sell 1 BTC/USD for market price, sell a bitcoin for dollars immediately
