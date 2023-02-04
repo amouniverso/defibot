@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/amouniverso/defibot#readme",
   "dependencies": {
-    "ccxt": "^2.6.36"
+    "ccxt": "^2.6.36",
+    "chalk": "^4.1.2"
   }
 }
