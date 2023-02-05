@@ -11,7 +11,7 @@ const createTable = (exchanges, prices, colCount) => {
                 return ({...accumRow, [currRow.id]: arrayRow.slice(i, i + colCount).reduce((accumCol, currCol) => {
                         let priceRatio = prices[currRow.id].price / prices[currCol.id].price
                         priceRatio = (((priceRatio >= 1 ? priceRatio: 1/priceRatio) - 1) * 100).toFixed(4)
-                        priceRatio = priceRatio > 1 ? priceRatio : '<1%'
+                        priceRatio = priceRatio > 1 ? priceRatio : '<=1'
                         const priceDiff = currRow.id !== currCol.id ? `${priceRatio}%` : ''
                         return {...accumCol, [currCol.id]: priceDiff}
                     }, {})})
@@ -25,13 +25,13 @@ const createTable = (exchanges, prices, colCount) => {
     console.log(chalk.green('============= DeFi combat bot ============'))
     console.log(chalk.green('============= Initializing... ============\n'))
 
-    const unavailableExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
+    const blacklistExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
         'huobijp', 'coinone', 'kuna', 'mercado', 'luno', 'therock', 'tidex', 'ripio', 'yobit', 'zipmex', 'okex',
         'okx', 'okex5', 'binanceus', 'kraken', 'bitfinex2', 'timex', 'blockchaincom', 'coinbase', 'alpaca', 'woo',
         'hollaex']
     const pair = 'SAND/USDT'
     let exchanges = ccxt.exchanges.map(ex => {
-        return !unavailableExchanges.includes(ex) ? new ccxt[ex]() : null
+        return !blacklistExchanges.includes(ex) ? new ccxt[ex]() : null
     }).filter(el => el)
     console.log('Loading markets...')
     await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
@@ -39,6 +39,7 @@ const createTable = (exchanges, prices, colCount) => {
     console.log('Markets loaded. Num of valid exchanges: ', exchanges.length, '\n')
 
     let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
+    log('Loading volume...')
     const tickers = await Promise.all(
         exchanges.map(exchange => exchange.fetchTicker(pair)
     ))
@@ -48,7 +49,8 @@ const createTable = (exchanges, prices, colCount) => {
             chalk.green(new Intl.NumberFormat('en-US').format(el.quoteVolume), pair.split('/')[1])
         )
     })
-    while (true) {
+    // while (true) {
+        log('\nLoading trades...')
         const trades = await Promise.all(
             exchanges.map(exchange => exchange.fetchTrades (pair, undefined, 1)
         ))
@@ -63,8 +65,8 @@ const createTable = (exchanges, prices, colCount) => {
             console.table(page)
         })
         process.stdout.write('\n')
-        await sleep (10000) // milliseconds
-    }
+        // await sleep (10000) // milliseconds
+    // }
     //
     // // sell 1 BTC/USD for market price, sell a bitcoin for dollars immediately
     // console.log (okcoinusd.id, await okcoinusd.createMarketSellOrder ('BTC/USD', 1))
