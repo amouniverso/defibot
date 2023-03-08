@@ -2,6 +2,15 @@
 const ccxt = require ('ccxt');
 const chalk = require ('chalk');
 
+const initialParams = {
+    PAIR: 'BTC/USDT',
+    VOLUME_LIMIT: 10000,
+    BLACKLISTED_EXCHANGES: ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
+        'huobijp', 'coinone', 'kuna', 'mercado', 'luno', 'therock', 'tidex', 'ripio', 'yobit', 'zipmex', 'okex',
+        'okx', 'okex5', 'binanceus', 'kraken', 'bitfinex2', 'timex', 'blockchaincom', 'coinbase', 'alpaca', 'woo',
+        'hollaex', 'bitpanda']
+}
+
 const log = console.log
 const createTable = (exchanges, prices, colCount) => {
     const result = []
@@ -22,37 +31,42 @@ const createTable = (exchanges, prices, colCount) => {
 }
 
 (async function () {
-    console.log(chalk.green('============= DeFi combat bot ============'))
-    console.log(chalk.green('============= Initializing... ============\n'))
+    log(chalk.green('============= DeFi combat bot ============'))
+    log(chalk.green('============= Initializing... ============\n'))
+    log(initialParams)
 
-    const blacklistExchanges = ['bitflyer', 'bithumb', 'bitstamp', 'btcalpha', 'buda', 'btcmarkets', 'coinmate',
-        'huobijp', 'coinone', 'kuna', 'mercado', 'luno', 'therock', 'tidex', 'ripio', 'yobit', 'zipmex', 'okex',
-        'okx', 'okex5', 'binanceus', 'kraken', 'bitfinex2', 'timex', 'blockchaincom', 'coinbase', 'alpaca', 'woo',
-        'hollaex']
-    const pair = 'SAND/USDT'
     let exchanges = ccxt.exchanges.map(ex => {
-        return !blacklistExchanges.includes(ex) ? new ccxt[ex]() : null
+        return !initialParams.BLACKLISTED_EXCHANGES.includes(ex) ? new ccxt[ex]() : null
     }).filter(el => el)
-    console.log('Loading markets...')
+    log('Loading markets...')
     await Promise.all(exchanges.map(exchange => exchange.loadMarkets()))
-    exchanges = exchanges.filter(el => el.symbols.includes(pair))
-    console.log('Markets loaded. Num of valid exchanges: ', exchanges.length, '\n')
+    exchanges = exchanges.filter(el => el.symbols.includes(initialParams.PAIR))
+    log('Markets loaded. Num of valid exchanges: ', exchanges.length, '\n')
 
-    let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
+    // let sleep = (ms) => new Promise (resolve => setTimeout (resolve, ms));
     log('Loading volume...')
     const tickers = await Promise.all(
-        exchanges.map(exchange => exchange.fetchTicker(pair)
+        exchanges.map(exchange => exchange.fetchTicker(initialParams.PAIR)
     ))
-    console.log('Quote volume for ' + pair + ':')
-    tickers.forEach((el, index) => {
-        console.log(exchanges[index].id + ':',
-            chalk.green(new Intl.NumberFormat('en-US').format(el.quoteVolume), pair.split('/')[1])
-        )
+
+    log('Quote 24h volume for ' + initialParams.PAIR + ':')
+    tickers.forEach((ticker, index) => {
+        const volume = ticker.quoteVolume
+        const exchange = exchanges[index]
+        if (volume >= initialParams.VOLUME_LIMIT) {
+            log(exchange.id + ':',
+                chalk.green(new Intl.NumberFormat('en-US').format(volume), initialParams.PAIR.split('/')[1])
+            )
+        } else {
+            exchanges[index] = null
+        }
     })
+    exchanges = exchanges.filter(ex => ex)
+    log('Num of valid exchanges after volume filter: ', exchanges.length)
     // while (true) {
         log('\nLoading trades...')
         const trades = await Promise.all(
-            exchanges.map(exchange => exchange.fetchTrades (pair, undefined, 1)
+            exchanges.map(exchange => exchange.fetchTrades(initialParams.PAIR, undefined, 1)
         ))
         const prices = {}
         trades.forEach((trade, index) => {
@@ -60,7 +74,7 @@ const createTable = (exchanges, prices, colCount) => {
             const {price, symbol} = lastTrade ? lastTrade : {}
             prices[exchanges[index].id] = {price, symbol}
         })
-        console.log(pair + ':')
+        log(initialParams.PAIR + ':')
         createTable(exchanges, prices, 9).forEach(page => {
             console.table(page)
         })
